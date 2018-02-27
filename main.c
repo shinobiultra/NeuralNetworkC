@@ -79,9 +79,10 @@ void Calculate_Layer(double *weightsArray,int sizeX, int sizeY, double *inputs, 
             sum += inputs[i] * *(weightsArray+i);
         }
         *outputs = Activation_Function(sum, SIGMOID);
+        sum = 0;
     }else{  // 2 dimensional array ---- weightsArray[sizeX][sizeY]
-        for(i=0;i<sizeX-1;i++){ // -1 we don't wanna overwrite the bias neuron
-            for(y=0;y<sizeY;y++){
+        for(i=0;i<sizeY;i++){ // -1 we don't wanna overwrite the bias neuron
+            for(y=0;y<sizeX;y++){                                   // sizeY vs. sizeX?!?!?!?!?!?!?!?!?!?!?!?!?!?!
                 sum += inputs[y] * *(weightsArray+sizeY*y+i);
             }
             //printf("%f\n",sum);
@@ -240,21 +241,44 @@ void Backpropagate_Hidden(NN* ann, int layer, double gamma, double learningRate)
     }
 }
 
-void Train_Network(NN* ann, double input[][ann->p_Sizes[0]], double output[][ann->p_Sizes[3]], int inps, int epochs){
+void Learn_Weights(NN* ann){
+    for(int i=0;i<LAYERS;i++){
+        for(int j=0;j<ann->p_Sizes[i];j++){
+            for(int k=0;k<ann->p_Sizes[i+1];k++){
+                *(ann->p_Weights[i]+ann->p_Sizes[i+1]*j+k)  += ann->weightDeltas[i][j][k];
+            }
+        }
+    }
+}
+
+void Report_Weights(NN* ann, int inp){
+    printf("Input %d:\n",inp);
+    for(int i=0;i<LAYERS;i++){
+        printf("------LAYER %d------\n",i);
+        for(int j=0;j<ann->p_Sizes[i];j++){
+            for(int k=0;k<ann->p_Sizes[i+1];k++){
+                printf("%d -> %d : %f ",j,k,*(ann->p_Weights[i]+ann->p_Sizes[i+1]*j+k));
+                printf("delta -> %f\n",ann->weightDeltas[i][j][k]);
+            }
+        }
+    }
+}
+
+void Train_Network(NN* ann, double input[][2], double output[][1], int inps, int epochs){
     for(int y=0;y<epochs;y++){
         for(int x=0;x<inps;x++){
             for(int i=0;i<ann->p_Sizes[0]-1;i++){
                 ann->InputX1[i] = input[x][i];
             }
             Run_Network(ann);
-            Backpropagate_Output(ann,3,output[x][0],1,0.01);
-            Backpropagate_Hidden(ann,2,1,0.01);
-            Backpropagate_Hidden(ann,1,1,0.01);
+            Backpropagate_Output(ann,3,output[x][0],1,0.03);
+            Backpropagate_Hidden(ann,2,1,0.03);
+            Backpropagate_Hidden(ann,1,1,0.03);
+            Learn_Weights(ann);
+            //Report_Weights(ann,x);
         }
     }
     Run_Network(ann);
-
-
 }
 
 int main()
@@ -266,15 +290,23 @@ int main()
     int s_OutputLayer = 1;
     /*---------------------------------------------*/
 
-    double input[4][2] = {{1,1},{1,0},{0,1},{0,0}};
-    double output[4][1] = {{0},{1},{1},{0}};
+    /*double input[4][2] = {{1,1},{1,0},{0,1},{0,0}};
+    double output[4][1] = {{0},{1},{1},{0}};*/
+    double input[4][2] = {{1,1},{1,0},{0,1},{0,0}};//,{1,0},{0,0},{1,1},{0,1}};
+    double output[4][1] = {{1},{0},{0},{1}};//,{1},{0},{0},{1}};
 
     NN *ann = Initialize_Network(s_InputLayer, s_HiddenLayer1, s_HiddenLayer2, s_OutputLayer);
 
-    Train_Network(ann,input,output,4,10000000);
+    Train_Network(ann,input,output,4,100000);
 
-    ann->InputX1[0] = 0;
-    ann->InputX1[1] = 1;
+    for(int i=0;i<2;i++){
+        for(int j=0;j<2;j++){
+            ann->InputX1[0] = i;
+            ann->InputX1[1] = j;
+            Run_Network(ann);
+            printf("%d - %d -> %f\n",i,j,ann->Output[0]);
+        }
+    }
 
     Run_Network(ann);
 
